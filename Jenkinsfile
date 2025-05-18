@@ -160,6 +160,14 @@ pipeline {
                 }
             }
         }
+        
+        stage('Cleanup') {
+            steps {
+                // Clean up resources
+                sh "docker system prune -f || true"
+                echo "Cleanup completed"
+            }
+        }
     }
     
     post {
@@ -172,11 +180,8 @@ pipeline {
             // You could add notifications here (email, Slack, etc.)
         }
         always {
-            node {
-                // Clean up resources
-                sh "docker system prune -f || true"
-                echo "Cleanup completed"
-            }
+            echo "Pipeline completed"
+            // Note: Docker cleanup moved to a separate stage for better compatibility
         }
     }
 }
