@@ -156,15 +156,13 @@ pipeline {
         stage('Setup Monitoring') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: KUBECONFIG_ID, variable: 'KUBECONFIG_FILE')]) {
-                        sh """
-                            export KUBECONFIG=\${KUBECONFIG_FILE}
-                            echo "Setting up basic monitoring for the application"
-                            # This is where you would deploy Prometheus/Grafana or other monitoring tools
-                            # For now, we'll just create a simple ConfigMap for demonstration
-                            kubectl create configmap -n healthcare-chatbot monitoring-config --from-literal=monitoring=enabled || true
-                        """
-                    }
+                    sh """
+                        export KUBECONFIG=~/.kube/config
+                        echo "Setting up basic monitoring for the application"
+                        # This is where you would deploy Prometheus/Grafana or other monitoring tools
+                        # For now, we'll just create a simple ConfigMap for demonstration
+                        /opt/homebrew/bin/kubectl create configmap -n healthcare-chatbot monitoring-config --from-literal=monitoring=enabled || true
+                    """
                 }
             }
         }
