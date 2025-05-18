@@ -1,0 +1,90 @@
+---
+- name: Deploy Healthcare Chatbot to Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    docker_registry: docker.io/aman7532
+    image_tag: latest
+    google_api_key: "{{ lookup('env', 'GOOGLE_API_KEY') }}"
+    kubeconfig: "{{ lookup('env', 'KUBECONFIG') }}"
+  
+  tasks:
+    - name: Create project directory
+      file:
+        path: "{{ playbook_dir }}/build"
+        state: directory
+        mode: '0755'
+      
+      
+    - name: Create Kubernetes namespace
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/k8s/namespace.yaml"
+      
+    - name: Create Kubernetes secrets
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: app-secrets
+            namespace: healthcare-chatbot
+          type: Opaque
+          data:
+            google-api-key: "{{ google_api_key | b64encode }}"
+      
+    - name: Deploy persistent volumes
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/k8s/persistent-volumes.yaml"
+      
+    - name: Deploy Elasticsearch
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/k8s/elasticsearch-deployment.yaml"
+      
+    - name: Deploy Logstash
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/k8s/logstash-deployment.yaml"
+      
+    - name: Deploy Kibana
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/k8s/kibana-deployment.yaml"
+      
+    - name: Template app deployment file
+      template:
+        src: "{{ playbook_dir }}/k8s/app-deployment.yaml"
+        dest: "{{ playbook_dir }}/build/app-deployment.yaml"
+      vars:
+        DOCKER_REGISTRY: "{{ docker_registry }}"
+      
+    - name: Deploy application
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/build/app-deployment.yaml"
+      
+    - name: Wait for application deployment to complete
+      k8s_info:
+        kubeconfig: "{{ kubeconfig }}"
+        kind: Deployment
+        name: healthcare-chatbot
+        namespace: healthcare-chatbot
+      register: deployment_status
+      until: deployment_status.resources[0].status.availableReplicas is defined and deployment_status.resources[0].status.availableReplicas == deployment_status.resources[0].spec.replicas
+      retries: 30
+      delay: 10
+      
+    - name: Display application URL
+      debug:
+        msg: "Application deployed successfully. Access it at http://healthcare-chatbot.example.com"

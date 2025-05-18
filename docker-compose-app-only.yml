@@ -1,0 +1,25 @@
+services:
+  healthcare-chatbot:
+    build: .
+    image: docker.io/aman7532/healthcare-chatbot:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./ExtraTrees:/app/ExtraTrees
+      - ./faiss_index:/app/faiss_index
+      - ./data.pth:/app/data.pth
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

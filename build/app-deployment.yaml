@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthcare-chatbot
+  namespace: healthcare-chatbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: healthcare-chatbot
+  template:
+    metadata:
+      labels:
+        app: healthcare-chatbot
+    spec:
+      containers:
+      - name: healthcare-chatbot
+        image: docker.io/aman7532/healthcare-chatbot:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: google-api-key
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "200m"
+          limits:
+            memory: "1.5Gi"
+            cpu: "400m"
+        livenessProbe:
+          httpGet:
+            path: /test
+            port: 3000
+          initialDelaySeconds: 300
+          timeoutSeconds: 5
+          periodSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /test
+            port: 3000
+          initialDelaySeconds: 180
+          timeoutSeconds: 5
+          periodSeconds: 20
+          failureThreshold: 3
+        volumeMounts:
+        - name: model-volume
+          mountPath: /app/models
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: model-volume
+        emptyDir: {}
+      - name: data-volume
+        configMap:
+          name: healthcare-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcare-chatbot-service
+  namespace: healthcare-chatbot
+spec:
+  selector:
+    app: healthcare-chatbot
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: healthcare-chatbot-ingress
+  namespace: healthcare-chatbot
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: healthcare-chatbot.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: healthcare-chatbot-service
+            port:
+              number: 80
