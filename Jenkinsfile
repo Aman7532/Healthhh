@@ -68,8 +68,10 @@ pipeline {
         stage('Debug Docker') {
             steps {
                 sh '''
-                    docker info
-                    docker system df
+                    whoami
+                    /usr/local/bin/docker version
+                    /usr/local/bin/docker info
+                    /usr/local/bin/docker system df
                     echo "Docker debug information collected"
                 '''
             }
@@ -79,16 +81,16 @@ pipeline {
             steps {
                 script {
                     // Check if the Docker image already exists
-                    def imageExists = sh(script: "docker images -q ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest", returnStdout: true).trim()
+                    def imageExists = sh(script: "/usr/local/bin/docker images -q ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest", returnStdout: true).trim()
                     
                     if (imageExists) {
                         echo "Docker image ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest already exists. Skipping build."
                         // Tag the existing image with the build number for consistency
-                        sh "docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "/usr/local/bin/docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
                     } else {
                         echo "Building Docker image..."
                         // Build the Docker image
-                        sh "docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest ."
+                        sh "/usr/local/bin/docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest ."
                         echo "Docker image built successfully"
                     }
                 }
@@ -100,12 +102,12 @@ pipeline {
                 script {
                     // Login to Docker Hub
                     withCredentials([string(credentialsId: DOCKER_CREDENTIALS_ID, variable: 'DOCKER_PASSWORD')]) {
-                        sh "echo ${DOCKER_PASSWORD} | docker login ${DOCKER_REGISTRY} -u aman7532 --password-stdin"
+                        sh "echo ${DOCKER_PASSWORD} | /usr/local/bin/docker login ${DOCKER_REGISTRY} -u aman7532 --password-stdin"
                     }
                     
                     // Push the Docker images
-                    sh "docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
+                    sh "/usr/local/bin/docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "/usr/local/bin/docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
                     echo "Docker images pushed successfully"
                 }
             }
@@ -128,7 +130,7 @@ pipeline {
                     sh """
                         export KUBECONFIG=~/.kube/config
                         export GOOGLE_API_KEY=${GOOGLE_API_KEY}
-                        ansible-playbook ansible-deploy-app-only.yml -v
+                        /opt/homebrew/bin/ansible-playbook ansible-deploy-app-only.yml -v
                         echo "Ansible deployment completed"
                     """
                 }
@@ -140,8 +142,8 @@ pipeline {
                 script {
                     sh """
                         export KUBECONFIG=~/.kube/config
-                        kubectl get pods -n healthcare-chatbot
-                        kubectl get svc -n healthcare-chatbot
+                        /opt/homebrew/bin/kubectl get pods -n healthcare-chatbot
+                        /opt/homebrew/bin/kubectl get svc -n healthcare-chatbot
                         echo "Deployment verification completed"
                     """
                 }
@@ -172,7 +174,7 @@ pipeline {
                         # Kill any existing port-forwarding processes
                         pkill -f "kubectl port-forward" || true
                         # Start port forwarding in the background
-                        nohup kubectl port-forward -n healthcare-chatbot svc/healthcare-chatbot-service 8090:80 > port-forward.log 2>&1 &
+                        nohup /opt/homebrew/bin/kubectl port-forward -n healthcare-chatbot svc/healthcare-chatbot-service 8090:80 > port-forward.log 2>&1 &
                         echo "Port forwarding set up on port 8090. Application accessible at http://localhost:8090"
                     """
                 }
@@ -182,7 +184,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 // Clean up resources
-                sh "docker system prune -f || true"
+                sh "/usr/local/bin/docker system prune -f || true"
                 echo "Cleanup completed"
             }
         }
