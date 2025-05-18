@@ -6,7 +6,6 @@ pipeline {
         IMAGE_NAME = 'healthcare-chatbot'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        KUBECONFIG_ID = 'kubeconfig'
         GOOGLE_API_KEY = credentials('google-api-key')
     }
     
@@ -107,15 +106,13 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 script {
-                    // Set up the Kubernetes config for Ansible
-                    withCredentials([file(credentialsId: KUBECONFIG_ID, variable: 'KUBECONFIG_FILE')]) {
-                        sh """
-                            export KUBECONFIG=\${KUBECONFIG_FILE}
-                            export GOOGLE_API_KEY=${GOOGLE_API_KEY}
-                            ansible-playbook ansible-deploy-app-only.yml -v
-                            echo "Ansible deployment completed"
-                        """
-                    }
+                    // Use the local kubeconfig file
+                    sh """
+                        export KUBECONFIG=~/.kube/config
+                        export GOOGLE_API_KEY=${GOOGLE_API_KEY}
+                        ansible-playbook ansible-deploy-app-only.yml -v
+                        echo "Ansible deployment completed"
+                    """
                 }
             }
         }
@@ -123,14 +120,12 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: KUBECONFIG_ID, variable: 'KUBECONFIG_FILE')]) {
-                        sh """
-                            export KUBECONFIG=\${KUBECONFIG_FILE}
-                            kubectl get pods -n healthcare-chatbot
-                            kubectl get svc -n healthcare-chatbot
-                            echo "Deployment verification completed"
-                        """
-                    }
+                    sh """
+                        export KUBECONFIG=~/.kube/config
+                        kubectl get pods -n healthcare-chatbot
+                        kubectl get svc -n healthcare-chatbot
+                        echo "Deployment verification completed"
+                    """
                 }
             }
         }
@@ -154,16 +149,14 @@ pipeline {
         stage('Setup Port Forwarding') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: KUBECONFIG_ID, variable: 'KUBECONFIG_FILE')]) {
-                        sh """
-                            export KUBECONFIG=\${KUBECONFIG_FILE}
-                            # Kill any existing port-forwarding processes
-                            pkill -f "kubectl port-forward" || true
-                            # Start port forwarding in the background
-                            nohup kubectl port-forward -n healthcare-chatbot svc/healthcare-chatbot-service 8090:80 > port-forward.log 2>&1 &
-                            echo "Port forwarding set up on port 8090. Application accessible at http://localhost:8090"
-                        """
-                    }
+                    sh """
+                        export KUBECONFIG=~/.kube/config
+                        # Kill any existing port-forwarding processes
+                        pkill -f "kubectl port-forward" || true
+                        # Start port forwarding in the background
+                        nohup kubectl port-forward -n healthcare-chatbot svc/healthcare-chatbot-service 8090:80 > port-forward.log 2>&1 &
+                        echo "Port forwarding set up on port 8090. Application accessible at http://localhost:8090"
+                    """
                 }
             }
         }
@@ -179,9 +172,11 @@ pipeline {
             // You could add notifications here (email, Slack, etc.)
         }
         always {
-            // Clean up resources
-            sh "docker system prune -f || true"
-            echo "Cleanup completed"
+            node {
+                // Clean up resources
+                sh "docker system prune -f || true"
+                echo "Cleanup completed"
+            }
         }
     }
 }
