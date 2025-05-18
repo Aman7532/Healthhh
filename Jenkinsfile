@@ -2,10 +2,13 @@ pipeline {
     agent any
     
     environment {
+        // Docker configuration
         DOCKER_REGISTRY = 'docker.io/aman7532'
         IMAGE_NAME = 'healthcare-chatbot'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
+        DOCKER_CREDENTIALS_ID = 'DockerHub'  // Updated to match your existing credentials ID
+        
+        // Google API Key
         GOOGLE_API_KEY = credentials('google-api-key')
     }
     
@@ -100,9 +103,9 @@ pipeline {
         stage('Push Docker Images') {
             steps {
                 script {
-                    // Login to Docker Hub
-                    withCredentials([string(credentialsId: DOCKER_CREDENTIALS_ID, variable: 'DOCKER_PASSWORD')]) {
-                        sh "echo ${DOCKER_PASSWORD} | /usr/local/bin/docker login ${DOCKER_REGISTRY} -u aman7532 --password-stdin"
+                    // Login to Docker Hub - using the same approach as in the Calculator project
+                    withCredentials([usernamePassword(credentialsId: 'DockerHub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo "$DOCKER_PASS" | /usr/local/bin/docker login -u "$DOCKER_USER" --password-stdin'
                     }
                     
                     // Push the Docker images
