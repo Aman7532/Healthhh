@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirement.txt
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('averaged_perceptron_tagger')"
 
-# Copy the rest of the application
+# Copy the rest of the application (venv will be excluded by .dockerignore)
 COPY . .
 
 # Set environment variables
@@ -32,8 +32,9 @@ RUN mkdir -p /app/models
 # Make entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
-# Set proper permissions
-RUN chown -R appuser:appuser /app
+# Set proper permissions (more selective to avoid permission errors)
+RUN find /app -type f -not -path "*/\.*" -exec chown appuser:appuser {} \; || true
+RUN find /app -type d -not -path "*/\.*" -exec chown appuser:appuser {} \; || true
 
 # Switch to non-root user
 USER appuser
