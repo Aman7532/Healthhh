@@ -10,11 +10,10 @@ pipeline {
         GOOGLE_API_KEY = credentials('google-api-key')
     }
     
+    // Use tools that are configured in your Jenkins instance
+    // If you don't have these tools configured, you can remove or modify this section
     tools {
-        // Define the tools needed for the pipeline
         maven 'Maven'
-        jdk 'JDK11'
-        python 'Python3'
     }
     
     stages {
@@ -28,7 +27,8 @@ pipeline {
         stage('Setup Python Environment') {
             steps {
                 sh '''
-                    python -m venv venv || true
+                    # Use system Python or specify the full path if needed
+                    /usr/bin/python3 -m venv venv || true
                     . venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirement.txt
@@ -97,6 +97,7 @@ pipeline {
         stage('Prepare Ansible Environment') {
             steps {
                 sh '''
+                    . venv/bin/activate
                     pip install ansible kubernetes openshift
                     echo "Ansible environment prepared"
                 '''
